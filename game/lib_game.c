@@ -12,18 +12,24 @@
  * @brief  Function that initializes game
  */
 
-void draw_score(int value)
+void draw_score(int value, int player)
 {
+    int start;
+    uint8_t is_reverse;
     char text[sizeof(value)];
-    GUI_Text(7, 160, (unsigned char *)text, Black, Black);
+    // start = player == 1 ? 7 : 200;
+    start = 7;
+    is_reverse = player == 1 ? 0 : 1;
+    
+    GUI_Text(start, 160, (unsigned char *)text, Black, Black, is_reverse);
     sprintf(text, "%d", value);
-    GUI_Text(7, 160, (uint8_t *)text, White, Black);
+    GUI_Text(start, 160, (uint8_t *)text, White, Black, is_reverse);
 }
 void draw_record(int value)
 {
     char text[sizeof(value)];
     sprintf(text, "%d", value);
-    GUI_Text(200, 7, (uint8_t *)text, White, Black);
+    GUI_Text(200, 7, (uint8_t *)text, White, Black, 0);
 }
 
 void draw_ball(uint16_t x, uint16_t y)
@@ -77,16 +83,14 @@ void GAME_init(void)
     for (i = 0; i < 5; i++)
     {
         // left wall
-        LCD_DrawLine(i, 0, i, 276, Red);
+        LCD_DrawLine(i, 0, i, 319, Red);
         // right wall
-        LCD_DrawLine(235 + i, 0, 235 + i, 276, Red);
-        // roof wall
-        LCD_DrawLine(5, i, 235, i, Red);
+        LCD_DrawLine(235 + i, 0, 235 + i, 319, Red);
     }
 
-    draw_record(record);
-    draw_score(score);
-    GUI_Text(40, 140, (unsigned char *)"Press Key1 to start", White, Black);
+    draw_score(score, 1);
+    draw_score(score, 2);
+    GUI_Text(40, 140, (unsigned char *)"Press Key1 to start", White, Black, 1);
 }
 
 void increase_score()
@@ -97,7 +101,7 @@ void increase_score()
     else
         score += 5;
 
-    draw_score(score);
+    draw_score(score, 1);
     // increase record
     if (score > record)
     {
@@ -111,10 +115,10 @@ void game_over()
     NVIC_EnableIRQ(EINT0_IRQn); /* enable Button interrupts			*/
     score = 0;
     // delete score
-    GUI_Text(7, 160, (unsigned char *)"        ", Black, Black);
-    draw_score(score);
-    GUI_Text(80, 140, (unsigned char *)"You lose", White, Black);
-    GUI_Text(38, 210, (unsigned char *)"Press Int0 to continue", White, Black);
+    GUI_Text(7, 160, (unsigned char *)"        ", Black, Black, 0);
+    draw_score(score, 1);
+    GUI_Text(80, 140, (unsigned char *)"You lose", White, Black, 0);
+    GUI_Text(38, 210, (unsigned char *)"Press Int0 to continue", White, Black, 0);
     pause_game();
     delete_ball();
 }
@@ -135,7 +139,7 @@ void resume_game()
 void start_game()
 {
     // delete 'Press key1 to start"
-    GUI_Text(40, 140, (unsigned char *)"                   ", Black, Black);
+    GUI_Text(40, 140, (unsigned char *)"                   ", Black, Black, 0);
     ADC_init(); /* ADC Initialization	for paddle movement	*/
     enable_timer(0);
 }
@@ -143,17 +147,17 @@ void start_game()
 void prepare_restart_game()
 {
     // delete "You lose"
-    GUI_Text(80, 140, (unsigned char *)"        ", Black, Black);
+    GUI_Text(80, 140, (unsigned char *)"        ", Black, Black, 0);
     // delete "Press Int0 to continue"
-    GUI_Text(38, 210, (unsigned char *)"                      ", Black, Black);
+    GUI_Text(38, 210, (unsigned char *)"                      ", Black, Black, 0);
     initialize_ball();
-    GUI_Text(40, 140, (unsigned char *)"Press Key1 to start", White, Black);
+    GUI_Text(40, 140, (unsigned char *)"Press Key1 to start", White, Black, 0);
 }
 
 void restart_game()
 {
     // delete "Press Key1 to start"
-    GUI_Text(40, 140, (unsigned char *)"                   ", White, Black);
+    GUI_Text(40, 140, (unsigned char *)"                   ", White, Black, 0);
     resume_game();
 }
 
@@ -425,8 +429,8 @@ void move_ball()
                     ball.h_speed = previous_h_speed;
                     ball.v_speed = previous_v_speed;
                     ball.h_direc = -ball.h_direc;
-                    draw_score(score);   // just to partially handle score erasing on ball moving hover
-                    draw_record(record); // just to partially handle score erasing on ball moving hover
+                    draw_score(score, 1);   // just to partially handle score erasing on ball moving hover
+                    draw_score(score, 2);   // just to partially handle score erasing on ball moving hover
                     return;
                 }
                 if (ball.h_direc < 0)
@@ -472,8 +476,8 @@ void move_ball()
                         handle_paddle_collsion();
                         ball.v_direc = -ball.v_direc;
                     }
-                    draw_score(score);   // just to partially handle score erasing on ball moving hover
-                    draw_record(record); // just to partially handle score erasing on ball moving hover
+                    draw_score(score, 1);   // just to partially handle score erasing on ball moving hover
+                    draw_score(score, 2);   // just to partially handle score erasing on ball moving hover
                     return;
                 }
                 if (ball.v_direc < 0)
