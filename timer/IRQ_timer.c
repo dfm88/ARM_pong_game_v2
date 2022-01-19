@@ -37,7 +37,8 @@ uint16_t SinTable[45] = /*                      */
 
 void TIMER0_IRQHandler(void)
 {
-	move_ball();
+	move_ball(&ball);
+	move_paddle(6, &paddle2, 1);
 	LPC_TIM0->IR = 1; /* clear interrupt flag */
 	return;
 }

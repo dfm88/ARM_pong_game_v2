@@ -38,7 +38,8 @@ extern uint8_t ScaleFlag; // <- ScaleFlag needs to visible in order for the emul
 volatile uint8_t prevBall_x_position;
 volatile uint8_t prevBall_y_position;
 struct struct_ball ball;
-struct struct_paddle paddle;
+struct struct_paddle paddle1;
+struct struct_paddle paddle2;
 
 /**
  * @brief main
@@ -57,10 +58,11 @@ int main(void)
 	init_timer(0, 0, 0, 3, 0x00003F7A); /* 0.65 ms */ // XXX tempo di refresh
 	init_RIT(0x004C4B40);				/* RIT Initialization 50 msec       	*/
 	enable_RIT();						/* RIT enabled							*/
-	// initialize timer 1 for wall low pitch sound
-	DAC_init();
-	init_timer(1, 0, 0, 3, 1890);
-	enable_timer(1);
+	// // initialize timer 1 for wall low pitch sound
+	// // disabled sound for project 2
+	// DAC_init();
+	// init_timer(1, 0, 0, 3, 1890);
+	// enable_timer(1);
 	
 	LPC_SC->PCON |= 0x1; /* power-down	mode										*/
 	LPC_SC->PCON &= ~(0x2);

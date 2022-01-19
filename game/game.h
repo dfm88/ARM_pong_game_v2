@@ -1,7 +1,7 @@
 #include "LPC17xx.h"
 
-static int record = 100;
-static int score = 100;
+static int score1 = 3;
+static int score2 = 0;
 static uint8_t is_game_over;
 struct struct_ball
 {
@@ -21,22 +21,23 @@ struct struct_paddle
 };
 
 extern struct struct_ball ball;
-extern struct struct_paddle paddle;
+extern struct struct_paddle paddle1;
+extern struct struct_paddle paddle2;
 
 void GAME_init(void);
-void handle_paddle_collsion(void);
-void move_paddle(unsigned short);
-void game_over(void);
-void increase_score(void);
+void handle_paddle_collsion(struct struct_ball *_ball, struct struct_paddle *_paddle);
+void move_paddle(unsigned short, struct struct_paddle *_paddle, uint8_t);
+void game_over(int);
+uint8_t increase_score(int);
 void pause_game(void);
 void resume_game(void);
 void restart_game(void);
-void initialize_ball(void);
-void draw_ball(uint16_t, uint16_t);
-void delete_ball(void);
+void initialize_ball(struct struct_ball *_ball);
+void draw_ball(uint16_t, uint16_t, struct struct_ball *_ball);
+void delete_ball(struct struct_ball *_ball);
 void start_game(void);
 void prepare_restart_game(void);
 
-void move_ball(void);
+void move_ball(struct struct_ball *_ball);
 
-int is_colliding(struct struct_ball ball, int8_t direction);
+int is_colliding(struct struct_ball *_ball, int8_t direction);

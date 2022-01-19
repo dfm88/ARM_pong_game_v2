@@ -32,36 +32,42 @@ void draw_record(int value)
     GUI_Text(200, 7, (uint8_t *)text, White, Black, 0);
 }
 
-void draw_ball(uint16_t x, uint16_t y)
+void draw_ball(uint16_t x, uint16_t y, struct struct_ball *_ball)
 {
     int i = 0;
-    ball.posX = x;
-    ball.posY = y;
+    _ball->posX = x;
+    _ball->posY = y;
     for (i = 0; i < 5; i++)
     {
-        LCD_DrawLine(ball.posX, ball.posY + i, ball.posX + 4, ball.posY + i, Green);
+        LCD_DrawLine(_ball->posX, _ball->posY + i, _ball->posX + 4, _ball->posY + i, Green);
     }
 }
 
-void initialize_ball()
+void initialize_ball(struct struct_ball *_ball)
 {
     NVIC_DisableIRQ(EINT0_IRQn); /* enable Button interrupts			*/
-    ball.posX = 230;
-    ball.posY = 160;
-    ball.h_direc = 1;
-    ball.v_direc = 1;
-    ball.h_speed = 2;
-    ball.v_speed = 2;
+    // _ball->posX = 230;
+    // _ball->posY = 150;
+    // _ball->h_direc = 1;
+    // _ball->v_direc = 1;
+    // _ball->h_speed = 2;
+    // _ball->v_speed = 2;
+    _ball->posX = 160;
+    _ball->posY = 45;
+    _ball->h_direc = 1;
+    _ball->v_direc = -1;
+    _ball->h_speed = 2;
+    _ball->v_speed = 2;
 
-    draw_ball(ball.posX, ball.posY);
+    draw_ball(_ball->posX, _ball->posY, &ball);
 }
 
-void delete_ball()
+void delete_ball(struct struct_ball *_ball)
 {
     int i = 0;
     for (i = 0; i < 5; i++)
     {
-        LCD_DrawLine(ball.posX, ball.posY + i, ball.posX + 4, ball.posY + i, Black);
+        LCD_DrawLine(_ball->posX, _ball->posY + i, _ball->posX + 4, _ball->posY + i, Black);
     }
 }
 
@@ -69,14 +75,22 @@ void GAME_init(void)
 {
     int i = 0;
 
-    initialize_ball();
+    initialize_ball(&ball);
 
-    // draw paddle
-    paddle.posX = 110;
-    paddle.posY = 277;
+    // draw paddle1
+    paddle1.posX = 110;
+    paddle1.posY = 277;
     for (i = 0; i < 10; i++)
     {
-        LCD_DrawLine(paddle.posX, paddle.posY + i, paddle.posX + 49, paddle.posY + i, Green);
+        LCD_DrawLine(paddle1.posX, paddle1.posY + i, paddle1.posX + 49, paddle1.posY + i, Green);
+    }
+    // draw paddle2
+    paddle2.posX = 130;
+    paddle2.posY = 32;
+    paddle2.h_direc = -1;
+    for (i = 0; i < 10; i++)
+    {
+        LCD_DrawLine(paddle2.posX, paddle2.posY + i, paddle2.posX + 49, paddle2.posY + i, Green);
     }
 
     // draw walls
@@ -88,39 +102,72 @@ void GAME_init(void)
         LCD_DrawLine(235 + i, 0, 235 + i, 319, Red);
     }
 
-    draw_score(score, 1);
-    draw_score(score, 2);
-    GUI_Text(40, 140, (unsigned char *)"Press Key1 to start", White, Black, 1);
+    draw_score(score1, 1);
+    draw_score(score2, 2);
+    GUI_Text(38, 305, (unsigned char *)"Press Key1 to start", White, Black, 0);
 }
 
-void increase_score()
+uint8_t increase_score(int player)
 {
     // increase score
-    if (score >= 100)
-        score += 10;
-    else
-        score += 5;
-
-    draw_score(score, 1);
-    // increase record
-    if (score > record)
-    {
-        record = score;
-        draw_record(record);
+    if(player ==1) {
+        score1++;
+        draw_score(score1, 1);
+        if(score1==5) {
+            return 1;
+        }
     }
+    else if (player == 2) {
+        score2++;
+        draw_score(score2, 2);
+        if(score2==5) {
+            return 2;
+        } 
+    }
+
+    pause_game();
+    delete_ball(&ball);
+    prepare_restart_game();
+    return 0;
 }
 
-void game_over()
+void game_over(int winner)
 {
+    uint8_t win_reverse;
+    uint8_t lose_reverse;
+    int lose_msg_high;
+    int win_msg_high;
+
     NVIC_EnableIRQ(EINT0_IRQn); /* enable Button interrupts			*/
-    score = 0;
-    // delete score
+    score1 = 0;
+    score2 = 0;
+    // delete score p1
     GUI_Text(7, 160, (unsigned char *)"        ", Black, Black, 0);
-    draw_score(score, 1);
-    GUI_Text(80, 140, (unsigned char *)"You lose", White, Black, 0);
+    // delete score p2
+    GUI_Text(7, 160, (unsigned char *)"        ", Black, Black, 1);
+    draw_score(score1, 1);
+    draw_score(score2, 2);
+
+    if(winner == 1) 
+    {
+        lose_msg_high = 140;
+        win_msg_high = 180;
+        win_reverse = 0;
+        lose_reverse = 1;
+    }
+    else if (winner ==2 )
+    {
+        lose_msg_high = 180;
+        win_msg_high = 140;
+        win_reverse = 1;
+        lose_reverse = 0;
+    }
+
+    GUI_Text(90, lose_msg_high, (unsigned char *)"You lose", Red, Black, lose_reverse);
+    GUI_Text(90, win_msg_high, (unsigned char *)"You win", Green, Black, win_reverse);
     GUI_Text(38, 210, (unsigned char *)"Press Int0 to continue", White, Black, 0);
     pause_game();
-    delete_ball();
+    delete_ball(&ball);
 }
 
 void pause_game()
@@ -139,25 +186,27 @@ void resume_game()
 void start_game()
 {
     // delete 'Press key1 to start"
-    GUI_Text(40, 140, (unsigned char *)"                   ", Black, Black, 0);
+    GUI_Text(38, 305, (unsigned char *)"                   ", Black, Black, 0);
     ADC_init(); /* ADC Initialization	for paddle movement	*/
     enable_timer(0);
 }
 
 void prepare_restart_game()
 {
-    // delete "You lose"
-    GUI_Text(80, 140, (unsigned char *)"        ", Black, Black, 0);
+    // delete "You lose/ you win"
+    GUI_Text(80, 140, (unsigned char *)"           ", Black, Black, 1);
+    // delete "You lose/ you win"
+    GUI_Text(80, 180, (unsigned char *)"           ", Black, Black, 0);
     // delete "Press Int0 to continue"
     GUI_Text(38, 210, (unsigned char *)"                      ", Black, Black, 0);
-    initialize_ball();
-    GUI_Text(40, 140, (unsigned char *)"Press Key1 to start", White, Black, 0);
+    initialize_ball(&ball);
+    GUI_Text(38, 305, (unsigned char *)"Press Key1 to start", White, Black, 0);
 }
 
 void restart_game()
 {
     // delete "Press Key1 to start"
-    GUI_Text(40, 140, (unsigned char *)"                   ", White, Black, 0);
+    GUI_Text(38, 305, (unsigned char *)"                   ", White, Black, 0);
     resume_game();
 }
 
@@ -168,20 +217,20 @@ void play_sound(uint16_t k)
     enable_timer(1);
 }
 
-int is_colliding(struct struct_ball ball, int8_t direction)
+int is_colliding(struct struct_ball *_ball, int8_t direction)
 {
 
     uint8_t delta_h, delta_v;
     int v_limit, h_limit, current_pos;
 
-    delta_h = ball.h_direc > 0 ? 4 : 0;
-    delta_v = ball.v_direc > 0 ? 4 : 0;
+    delta_h = _ball->h_direc > 0 ? 4 : 0;
+    delta_v = _ball->v_direc > 0 ? 4 : 0;
 
     // 0x68 = h    0x76 = v
-    current_pos = direction == 'h' ? ball.posX + delta_h : ball.posY + delta_v;
+    current_pos = direction == 'h' ? _ball->posX + delta_h : _ball->posY + delta_v;
 
-    v_limit = ball.v_direc > 0 ? 276 : 5; // (last or first valid pixel)
-    h_limit = ball.h_direc > 0 ? 234 : 5; // (last or first valid pixel)
+    v_limit = _ball->v_direc > 0 ? 276 : 42; // (last or first valid pixel)
+    h_limit = _ball->h_direc > 0 ? 234 : 5; // (last or first valid pixel)
 
     switch (direction)
     {
@@ -189,20 +238,35 @@ int is_colliding(struct struct_ball ball, int8_t direction)
         return current_pos - h_limit == 0;
 
     case 'v': /* moving vertically */
-        // if ball was moving up
-        if (ball.v_direc < 0)
-            return current_pos - v_limit == 0;
-        // if ball was moving down, check paddle position
+        // if _ball->was moving up
+        if (_ball->v_direc < 0) 
+        {
+            // is colliding with paddle high && paddle is upon the ball
+            if (current_pos - v_limit == 0)
+            {
+                if ((paddle2.posX - 4) <= _ball->posX)
+                {
+                    if (_ball->posX <= (paddle2.posX + 49))
+                    {
+                        return 1;
+                    }
+                }
+            }
+            else
+            {
+                return 0;
+            }
+        }
+        // if _ball->was moving down, check paddle position
         else
         {
             // is colliding with paddle high && paddle is under the ball
             if (current_pos - v_limit == 0)
             {
-                if ((paddle.posX - 4) <= ball.posX)
+                if ((paddle1.posX - 4) <= _ball->posX)
                 {
-                    if (ball.posX <= (paddle.posX + 49))
+                    if (_ball->posX <= (paddle1.posX + 49))
                     {
-                        increase_score();
                         return 1;
                     }
                 }
@@ -218,7 +282,7 @@ int is_colliding(struct struct_ball ball, int8_t direction)
     }
 }
 
-void handle_paddle_collsion()
+void handle_paddle_collsion(struct struct_ball *_ball, struct struct_paddle *_paddle)
 {
     // Dichotomic search
     /**
@@ -234,35 +298,35 @@ void handle_paddle_collsion()
      */
 
     /** 1-23 **/
-    if (ball.posX <= (paddle.posX + 22))
+    if (_ball->posX <= (_paddle->posX + 22))
     {
-        ball.h_direc = -1;
+        _ball->h_direc = -1;
         // 1-13
-        if (ball.posX <= (paddle.posX + 12))
+        if (_ball->posX <= (_paddle->posX + 12))
         {
             // 1-8
-            if (ball.posX <= (paddle.posX + 7))
+            if (_ball->posX <= (_paddle->posX + 7))
             {
                 // 1-3
-                if (ball.posX <= paddle.posX + 2)
+                if (_ball->posX <= _paddle->posX + 2)
                 {
-                    ball.v_speed = 1;
-                    ball.h_speed = 4;
+                    _ball->v_speed = 1;
+                    _ball->h_speed = 4;
                     return;
                 }
                 // 4-8
                 else
                 {
-                    ball.v_speed = 2;
-                    ball.h_speed = 3;
+                    _ball->v_speed = 2;
+                    _ball->h_speed = 3;
                     return;
                 }
             }
             // 9-13
             else
             {
-                ball.v_speed = 3;
-                ball.h_speed = 2;
+                _ball->v_speed = 3;
+                _ball->h_speed = 2;
                 return;
             }
         }
@@ -270,17 +334,17 @@ void handle_paddle_collsion()
         else
         {
             // 14-18
-            if (ball.posX <= paddle.posX + 17)
+            if (_ball->posX <= _paddle->posX + 17)
             {
-                ball.v_speed = 4;
-                ball.h_speed = 1;
+                _ball->v_speed = 4;
+                _ball->h_speed = 1;
                 return;
             }
             // 19-23
             else
             {
-                ball.v_speed = 5;
-                ball.h_speed = 1;
+                _ball->v_speed = 5;
+                _ball->h_speed = 1;
                 return;
             }
         }
@@ -288,22 +352,22 @@ void handle_paddle_collsion()
     /** 24-50 **/
     else
     {
-        ball.h_direc = 1;
+        _ball->h_direc = 1;
         // 39-50
-        if (ball.posX >= paddle.posX + 38)
+        if (_ball->posX >= _paddle->posX + 38)
         {
             // 44-50
-            if (ball.posX >= paddle.posX + 43)
+            if (_ball->posX >= _paddle->posX + 43)
             {
-                ball.v_speed = 1;
-                ball.h_speed = 4;
+                _ball->v_speed = 1;
+                _ball->h_speed = 4;
                 return;
             }
             // 39-43
             else
             {
-                ball.v_speed = 2;
-                ball.h_speed = 3;
+                _ball->v_speed = 2;
+                _ball->h_speed = 3;
                 return;
             }
         }
@@ -311,46 +375,51 @@ void handle_paddle_collsion()
         else
         {
             // 29-38
-            if (ball.posX >= paddle.posX + 28)
+            if (_ball->posX >= _paddle->posX + 28)
             {
                 // 34-38
-                if (ball.posX >= paddle.posX + 33)
+                if (_ball->posX >= _paddle->posX + 33)
                 {
-                    ball.v_speed = 3;
-                    ball.h_speed = 2;
+                    _ball->v_speed = 3;
+                    _ball->h_speed = 2;
                     return;
                 }
                 // 29-33
                 else
                 {
-                    ball.v_speed = 4;
-                    ball.h_speed = 1;
+                    _ball->v_speed = 4;
+                    _ball->h_speed = 1;
                     return;
                 }
             }
             // 24-28
             else
             {
-                ball.v_speed = 5;
-                ball.h_speed = 1;
+                _ball->v_speed = 5;
+                _ball->h_speed = 1;
                 return;
             }
         }
     }
 }
 
-void move_paddle(unsigned short mov)
+void move_paddle(unsigned short mov, struct struct_paddle *_paddle, uint8_t ai)
 {
     uint8_t increment = 0;
     int8_t dir = 0;
     uint8_t i = 0;
+    uint8_t drawing_dir;
     uint8_t delta_del;
     uint8_t delta_draw;
     // mov == 0-3 move left
     // mov == 4   hold
     // mov == 5-8 move right
 
-    dir = mov > 4 ? 1 : -1;        // -1
+    // if AI is true, direction of paddle is evaluated from oaddle h_direc attribute,
+    // else it is evaluated from mov value
+    dir = ai ? _paddle->h_direc : mov > 4 ? 1 : -1;        // -1
+    drawing_dir =1;
+    // drawing_dir = ai ? -1 : 1;
     delta_del = dir > 0 ? 0 : 49;  // 49
     delta_draw = dir > 0 ? 49 : 0; // 0
 
@@ -380,24 +449,29 @@ void move_paddle(unsigned short mov)
 
     for (i = 0; i < increment; i++)
     {
-        if ((dir > 0 && paddle.posX < 188) || (dir < 0 && paddle.posX > 0))
+        if ((dir > 0 && _paddle->posX < 183) || (dir < 0 && _paddle->posX > 5))
         {
             // delete line
-            LCD_DrawLine(paddle.posX + (delta_del /* + i*dir*/), paddle.posY, paddle.posX + (delta_del /* + i*dir*/), paddle.posY + 9, Black);
-            // change paddle position
-            paddle.posX = paddle.posX + dir;
+            LCD_DrawLine(_paddle->posX + (delta_del /* + i*dir*/), _paddle->posY, _paddle->posX + (delta_del /* + i*dir*/), _paddle->posY + (9*drawing_dir), Black);
+            // change _paddle->position
+            _paddle->posX = _paddle->posX + dir;
             // draw line
-            LCD_DrawLine(paddle.posX + (delta_draw /* + i*dir*/), paddle.posY, paddle.posX + (delta_draw /* + i*dir*/), paddle.posY + 9, Green);
+            LCD_DrawLine(_paddle->posX + (delta_draw /* + i*dir*/), _paddle->posY, _paddle->posX + (delta_draw /* + i*dir*/), _paddle->posY + (9*drawing_dir), Green);
         }
         else
         {
+            // if _paddle pointer is the paddle2 (AI)
+            if(ai)
+            {
+                _paddle->h_direc = -_paddle->h_direc;
+            }
             return;
         }
     }
     return;
 }
 
-void move_ball()
+void move_ball( struct struct_ball *_ball)
 {
     // Vertical movement  : 1 = Sud,
     //					   -1 = North
@@ -410,108 +484,114 @@ void move_ball()
 
     while (!is_game_over)
     {
-        previous_h_speed = ball.h_speed;
-        previous_v_speed = ball.v_speed;
+        previous_h_speed = _ball->h_speed;
+        previous_v_speed = _ball->v_speed;
 
-        longer_speed = ball.v_speed >= ball.h_speed ? ball.v_speed : ball.h_speed;
+        longer_speed = _ball->v_speed >= _ball->h_speed ? _ball->v_speed : _ball->h_speed;
 
         for (i = 0; i < longer_speed; i++)
         {
 
             // if ball is moving HORIZONTALLY and Horizontal speed is not lapsed
-            if (ball.h_direc && ball.h_speed)
+            if (_ball->h_direc && _ball->h_speed)
             {
-                isColliding = is_colliding(ball, 'h');
+                isColliding = is_colliding(&ball, 'h');
 
                 if (isColliding)
                 {
-                    play_sound(1890);
-                    ball.h_speed = previous_h_speed;
-                    ball.v_speed = previous_v_speed;
-                    ball.h_direc = -ball.h_direc;
-                    draw_score(score, 1);   // just to partially handle score erasing on ball moving hover
-                    draw_score(score, 2);   // just to partially handle score erasing on ball moving hover
+                    // play_sound(1890);
+                    _ball->h_speed = previous_h_speed;
+                    _ball->v_speed = previous_v_speed;
+                    _ball->h_direc = -_ball->h_direc;
+                    draw_score(score1, 1);   // just to partially handle score erasing on ball moving hover
+                    draw_score(score2, 2);   // just to partially handle score erasing on ball moving hover
                     return;
                 }
-                if (ball.h_direc < 0)
+                if (_ball->h_direc < 0)
                 {
                     // MOVE horizontal left
                     // delete horizontal right
-                    LCD_DrawLine(ball.posX + delta, ball.posY, ball.posX + delta, ball.posY + delta, Black);
+                    LCD_DrawLine(_ball->posX + delta, _ball->posY, _ball->posX + delta, _ball->posY + delta, Black);
                     // paint horizontal left
-                    LCD_DrawLine(ball.posX + ball.h_direc, ball.posY, ball.posX + ball.h_direc, ball.posY + delta, Green);
+                    LCD_DrawLine(_ball->posX + _ball->h_direc, _ball->posY, _ball->posX + _ball->h_direc, _ball->posY + delta, Green);
                 }
                 else
                 {
                     // MOVE horizontal right
                     // delete horizontal left
-                    LCD_DrawLine(ball.posX, ball.posY, ball.posX, ball.posY + delta, Black);
+                    LCD_DrawLine(_ball->posX, _ball->posY, _ball->posX, _ball->posY + delta, Black);
                     // paint horizontal right
-                    LCD_DrawLine(ball.posX + ball.h_direc + delta, ball.posY, ball.posX + ball.h_direc + delta, ball.posY + delta, Green);
+                    LCD_DrawLine(_ball->posX + _ball->h_direc + delta, _ball->posY, _ball->posX + _ball->h_direc + delta, _ball->posY + delta, Green);
                 }
                 // update x
-                ball.posX = ball.posX + ball.h_direc;
+                _ball->posX = _ball->posX + _ball->h_direc;
                 // decrement horizontal speed
-                ball.h_speed--;
+                _ball->h_speed--;
             }
             // if ball is moving VERTICALLY and Vertical speed is not Elapsed
-            if (ball.v_direc && ball.v_speed)
+            if (_ball->v_direc && _ball->v_speed)
             {
-                isColliding = is_colliding(ball, 'v');
+                isColliding = is_colliding(&ball, 'v');
                 if (isColliding)
                 {
                     // handle vertical collission..
                     // ..opposite reflection angle if hits roof (v_direc < 0)
-                    if (ball.v_direc < 0)
+                    if (_ball->v_direc < 0)
                     {
-                        play_sound(1890);
-                        ball.h_speed = previous_h_speed;
-                        ball.v_speed = previous_v_speed;
-                        ball.v_direc = -ball.v_direc;
+                        // play_sound(1890);
+                        handle_paddle_collsion(&ball, &paddle2);
+                        _ball->v_direc = -_ball->v_direc;
                     }
                     // ..handle reflection angle if hits paddle (v_direc > 0)
                     else
                     {
-                        play_sound(1125);
-                        handle_paddle_collsion();
-                        ball.v_direc = -ball.v_direc;
+                        // play_sound(1125);
+                        handle_paddle_collsion(&ball, &paddle1);
+                        _ball->v_direc = -_ball->v_direc;
                     }
-                    draw_score(score, 1);   // just to partially handle score erasing on ball moving hover
-                    draw_score(score, 2);   // just to partially handle score erasing on ball moving hover
+                    draw_score(score1, 1);   // just to partially handle score erasing on ball moving hover
+                    draw_score(score2, 2);   // just to partially handle score erasing on ball moving hover
                     return;
                 }
-                if (ball.v_direc < 0)
+                if (_ball->v_direc < 0)
                 {
                     // MOVE vertical up
                     // delete vertical down
-                    LCD_DrawLine(ball.posX, ball.posY + delta, ball.posX + delta, ball.posY + delta, Black);
+                    LCD_DrawLine(_ball->posX, _ball->posY + delta, _ball->posX + delta, _ball->posY + delta, Black);
                     // paint vertical up
-                    LCD_DrawLine(ball.posX, ball.posY + ball.v_direc, ball.posX + delta, ball.posY + ball.v_direc, Green);
+                    LCD_DrawLine(_ball->posX, _ball->posY + _ball->v_direc, _ball->posX + delta, _ball->posY + _ball->v_direc, Green);
                 }
                 else
                 {
                     // MOVE vertical down
                     // delete vertical up
-                    LCD_DrawLine(ball.posX, ball.posY, ball.posX + delta, ball.posY, Black);
+                    LCD_DrawLine(_ball->posX, _ball->posY, _ball->posX + delta, _ball->posY, Black);
                     // paint vertical down
-                    LCD_DrawLine(ball.posX, ball.posY + ball.v_direc + delta, ball.posX + delta, ball.posY + ball.v_direc + delta, Green);
+                    LCD_DrawLine(_ball->posX, _ball->posY + _ball->v_direc + delta, _ball->posX + delta, _ball->posY + _ball->v_direc + delta, Green);
                 }
                 // update y
-                ball.posY = ball.posY + ball.v_direc;
+                _ball->posY = _ball->posY + _ball->v_direc;
 
-                is_game_over = ball.posY > 278;
+                // player 2 scores
+                if (_ball->posY > 278)
+                {
+                    is_game_over = increase_score(2);
+                } // player 2 scores
+                else if (_ball->posY < 40)
+                {
+                    is_game_over = increase_score(1);
+                }
                 if (is_game_over)
                 {
-                    game_over();
+                    game_over(is_game_over);
                     break;
                 }
-                // decrement vertical speed
-                ball.v_speed--;
+                _ball->v_speed--;
             }
         }
         // restart if cycle ended up with no collisions
-        ball.h_speed = previous_h_speed;
-        ball.v_speed = previous_v_speed;
+        _ball->h_speed = previous_h_speed;
+        _ball->v_speed = previous_v_speed;
         return;
     }
 }

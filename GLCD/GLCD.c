@@ -653,6 +653,10 @@ void GUI_Text(uint16_t Xpos, uint16_t Ypos, uint8_t *str, uint16_t Color, uint16
 	direction = is_reverse ? -1 : 1;
 	// String length
 	len = strlen(&*str);
+
+	// avoid infinte loop if len == 0
+	len = len == 0 ? 1 : len;
+
 	if (is_reverse)
 	{
 		// flip starting point
